@@ -1,0 +1,154 @@
+---
+title: "The Node.js Event Loop, Phase by Phase"
+description: "Node is not single-threaded, and setTimeout(fn, 0) does not run immediately. A walk through libuv's six phases and the two queues that jump the line."
+date: "2026-08-24"
+tags: ["nodejs", "concurrency", "libuv"]
+author: "Ish"
+---
+
+Every Node tutorial says the same two things: "Node is single-threaded" and "Node is
+non-blocking." Both are half-truths, and the half that gets dropped is the half that
+explains your production incident.
+
+Here is the accurate version: **your JavaScript** runs on one thread. Everything else —
+file I/O, DNS lookups, `crypto.pbkdf2`, zlib — is handed to libuv, which owns a thread
+pool. The event loop is the mechanism that hands work out and collects results.
+
+## The six phases
+
+libuv runs a loop. Each full iteration is a *tick*, and each tick moves through six
+phases in a fixed order. Every phase has its own callback queue, and the loop drains
+that queue before moving on.
+
+| Phase | What runs |
+| --- | --- |
+| **timers** | Callbacks from `setTimeout` and `setInterval` whose threshold has elapsed |
+| **pending callbacks** | Deferred system-level callbacks, e.g. a TCP `ECONNREFUSED` |
+| **idle, prepare** | libuv internal bookkeeping |
+| **poll** | Retrieve new I/O events; execute nearly all I/O callbacks |
+| **check** | `setImmediate` callbacks |
+| **close callbacks** | `socket.on('close', ...)` and friends |
+
+The poll phase is where the loop spends most of its life. If there is nothing in the
+poll queue and no `setImmediate` scheduled, the loop **blocks here** and waits for the
+kernel to report I/O. That blocking is the point — an idle Node process should use no
+CPU.
+
+<Callout type="note" title="Why setTimeout(fn, 0) is not immediate">
+  A timer's threshold is a *minimum*, not a promise. If the poll phase is busy running a
+  callback when your 1&nbsp;ms timer expires, the timer waits until the loop comes back
+  around to the timers phase. Under load that can be tens of milliseconds.
+</Callout>
+
+## The two queues that jump the line
+
+Between *every* phase transition — not once per tick — Node drains two extra queues,
+in this order:
+
+1. The **`process.nextTick`** queue
+2. The **microtask** queue (resolved promises, `queueMicrotask`)
+
+`nextTick` wins. And because each queue is drained *completely* before moving on, a
+`nextTick` callback that schedules another `nextTick` callback will starve the loop
+forever:
+
+```js title="starvation.js" showLineNumbers {4-6}
+// This process will never handle another I/O event.
+let n = 0;
+function spin() {
+  process.nextTick(spin); // [!code highlight]
+  n++;
+}
+spin();
+```
+
+The poll phase never gets a turn. No sockets are read, no timers fire, and the process
+pins a core at 100%. Recursive `setImmediate` is the safe alternative — it yields to a
+new tick each time.
+
+## Ordering, demonstrated
+
+The classic interview question. What does this print?
+
+```js title="ordering.js" showLineNumbers
+setTimeout(() => console.log("timeout"), 0);
+setImmediate(() => console.log("immediate"));
+
+Promise.resolve().then(() => console.log("promise"));
+process.nextTick(() => console.log("nextTick"));
+
+console.log("sync");
+```
+
+The synchronous line runs first, obviously. Then the loop is *about* to start, so it
+drains the jumper queues — `nextTick`, then `promise`. Then the phases begin:
+
+```plaintext
+sync
+nextTick
+promise
+timeout      <- or "immediate"; this pair is genuinely non-deterministic
+immediate
+```
+
+That last pair really is a coin flip at the top level. It depends on how long the
+process took to boot: if more than 1&nbsp;ms elapsed before the loop started, the timer
+is already expired when the timers phase runs and fires first. If not, the loop reaches
+the check phase first.
+
+<Callout type="tip" title="The one case that is deterministic">
+  Inside an I/O callback, you are already in the poll phase. `setImmediate` runs in the
+  very next phase (check); `setTimeout` has to wait for the loop to wrap all the way
+  around. Inside I/O, `setImmediate` **always** wins.
+</Callout>
+
+## The thread pool is four threads
+
+This is the part that bites in production. libuv's thread pool defaults to **four**
+threads, and it is shared by `fs`, `dns.lookup`, `crypto`, and `zlib`.
+
+```js title="pool-saturation.js" showLineNumbers {6-9}
+const crypto = require("node:crypto");
+
+console.time("hash");
+for (let i = 0; i < 5; i++) {
+  crypto.pbkdf2("secret", "salt", 200_000, 64, "sha512", () => {
+    // The first four finish together.
+    // The fifth waits for a thread to free up, so it lands
+    // roughly one full hash-duration later.
+    console.timeEnd("hash");
+  });
+}
+```
+
+Five concurrent password hashes on a four-thread pool means the fifth request is
+queued behind the others. Your p99 latency now has a cliff in it that no amount of
+"but Node is non-blocking" will explain.
+
+Raise it before the runtime starts — the pool is created lazily on first use and cannot
+be resized afterwards:
+
+```bash
+UV_THREADPOOL_SIZE=16 node server.js
+```
+
+Sixteen is not a magic number. Set it against your core count and your actual I/O
+profile, then measure.
+
+<Callout type="warning" title="Network I/O does not use the pool">
+  TCP and HTTP sockets go through the kernel's own async mechanisms — epoll, kqueue,
+  IOCP — not the thread pool. Raising `UV_THREADPOOL_SIZE` will do nothing for a service
+  that is purely proxying HTTP. It is for filesystem and CPU-bound crypto work.
+</Callout>
+
+## What to take away
+
+- One thread runs your JavaScript. Blocking it blocks everything, including the health
+  check that would have told you.
+- `nextTick` beats promises; both beat every phase.
+- `setImmediate` inside I/O is deterministic. `setTimeout(fn, 0)` never is.
+- The thread pool is four threads until you say otherwise.
+
+The event loop is not magic and it is not a scheduler in the OS sense. It is a `while`
+loop with six queues, and once you can name the queues, most Node performance mysteries
+stop being mysteries.

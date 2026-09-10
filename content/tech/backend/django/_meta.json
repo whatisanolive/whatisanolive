@@ -1,0 +1,5 @@
+{
+  "title": "Django",
+  "description": "The ORM, Django REST Framework, and the queries you did not know you were making.",
+  "order": 2
+}

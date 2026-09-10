@@ -1,0 +1,116 @@
+---
+title: "Creative Engineering, or: Why I Keep a Folder of Useless Programs"
+description: "On taste as an engineering skill, the case for building things with no users, and what a synthesizer taught me about API design."
+date: "2026-08-15"
+tags: ["essay", "craft", "design", "music"]
+author: "Ish"
+---
+
+I have a folder called `sketches`. Nothing in it has users. Nothing in it has tests.
+Some of it does not compile any more, because the language moved on and I did not care
+enough to follow.
+
+It is the most valuable folder on my machine.
+
+## The problem with only building useful things
+
+Professional engineering optimises for a narrow target: does it work, is it
+maintainable, can the next person understand it. These are good constraints. They are
+also, applied continuously for years, a kind of sensory deprivation.
+
+Every decision at work is made under a ceiling. You do not pick the interesting
+solution; you pick the one that the team can operate at 3 a.m. You do not explore the
+design space; you take the second-best idea because it is the one you can explain in a
+design review. This is correct. It is *also* how you stop developing taste, because
+taste is developed by making choices for their own sake and then living with them.
+
+> A craftsperson who only ever builds to spec becomes very good at building to spec.
+
+The sketches folder is where I make choices nobody has to live with.
+
+## What a synthesizer taught me about API design
+
+A few years ago I built a monophonic subtractive synth in the browser. Web Audio,
+maybe six hundred lines, no framework. It was not good. It aliased badly above the
+fifth octave and the filter envelope had an audible click on retrigger.
+
+But I learned something from it that I have used in every API I have designed since.
+
+A synthesizer has perhaps fifteen knobs. Oscillator waveform, detune, filter cutoff,
+resonance, four envelope stages, LFO rate and depth. Fifteen parameters is a *small*
+interface. And yet the space it spans is effectively infinite, because the parameters
+are **orthogonal and continuous**. Turning the cutoff knob does one thing. It does that
+one thing regardless of where the resonance knob is. You can learn each knob in
+isolation and then combine them without relearning anything.
+
+Compare that to most software configuration, where option `A` silently changes what
+option `B` means, three flags are mutually exclusive in a way documented only in a
+changelog, and the useful behaviour lives in an undocumented combination.
+
+<Callout type="tip" title="The knob test">
+  For each parameter in your API: can you describe what it does in one sentence that
+  does not mention any other parameter? If not, you have coupling, and your users will
+  discover it the hard way.
+</Callout>
+
+The synth also taught me about **defaults as documentation**. Every synth ships with a
+patch loaded — usually a plain sawtooth with the filter mostly open. It makes a sound
+immediately. You are never staring at silence wondering whether the thing is broken.
+
+The equivalent in software is the config file that works with every line commented out.
+It is not the same as having good defaults; it is having defaults that *demonstrate the
+shape of the thing*.
+
+## The case for finishing badly
+
+The sketches folder has a rule: I am allowed to abandon anything, but I have to get it
+to the point where it does the thing once.
+
+This is a lower bar than "finished" and a much higher bar than "started". It is where
+almost all the learning is, because the last 10% of getting something to work once is
+where the assumptions fail. Everything before that is the part you already knew.
+
+Things I have built to this standard and then never touched again:
+
+- A raymarcher that renders exactly one scene, badly lit.
+- A regex engine that supports concatenation, alternation, and Kleene star, and nothing
+  else. Backtracking, no optimisations. About 200 lines.
+- A CLI that turns my git history into a sonification. It sounds terrible. The mapping
+  from diff size to pitch is completely arbitrary.
+- A spreadsheet with a working dependency graph and no way to save.
+
+None of these are portfolio pieces. All of them changed how I think. The regex engine
+in particular is why I can now read a query planner's output and have an intuition for
+what it is doing — because I have written the thing that turns a declarative expression
+into a state machine, and it is not mysterious any more.
+
+<Callout type="note" title="On the word 'creative'">
+  I do not mean decorative. I mean the ordinary sense: making something that did not
+  exist, where the constraints are chosen rather than given. Engineering is already a
+  creative discipline. It is just that most of the time somebody else picks the
+  constraints.
+</Callout>
+
+## Taste is a real engineering skill
+
+Two engineers with identical knowledge will produce different systems. The difference
+is taste — the accumulated sense of which abstractions will hold, which cleverness will
+be regretted, where to spend the complexity budget.
+
+Taste is not learnable from documentation. It comes from having made a lot of choices
+and having seen how they aged. The tight feedback loop for that is not production work,
+where the loop is measured in quarters. It is small projects you abandon quickly, where
+the loop is measured in evenings.
+
+The engineers I learn the most from all have some version of the sketches folder. A
+half-finished compiler. A game engine with no game. Custom keyboard firmware. A
+homelab that does nothing a Raspberry Pi could not do. They do not talk about these
+things at work and they are not on anybody's résumé.
+
+They are, I am fairly sure, where the judgement comes from.
+
+---
+
+*This is what the Blank Canvas section is for: the things I think about that are not
+system design and are not complexity analysis. Sometimes it will be music. Sometimes it
+will be why a particular piece of software feels good to use. It will not be a listicle.*

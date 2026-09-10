@@ -1,0 +1,159 @@
+---
+title: "Gradient Descent from the Derivative Up"
+description: "Deriving the update rule, proving why it decreases the loss, and seeing exactly where a badly chosen learning rate makes it diverge."
+date: "2026-07-19"
+tags: ["optimization", "calculus", "ml-theory"]
+author: "Ish"
+---
+
+Gradient descent is one line of code and about a page of justification. The line is
+easy to memorise and easy to misuse; the page is what tells you why your loss curve is
+oscillating.
+
+## The setup
+
+We have a loss $L(\theta)$ over parameters $\theta \in \mathbb{R}^n$, and we want to
+find $\theta^\star = \arg\min_\theta L(\theta)$. We cannot solve $\nabla L = 0$ in
+closed form, so we do the next best thing: start somewhere and repeatedly step downhill.
+
+The gradient $\nabla L(\theta)$ is the vector of partial derivatives:
+
+$$
+\nabla L(\theta) = \left[ \frac{\partial L}{\partial \theta_1}, \frac{\partial L}{\partial \theta_2}, \ldots, \frac{\partial L}{\partial \theta_n} \right]^{\top}
+$$
+
+Its key property is directional: for a unit vector $u$, the rate of change of $L$ along
+$u$ is $\nabla L(\theta)^{\top} u$. By Cauchy&ndash;Schwarz this is maximised when $u$
+points along $\nabla L$, and minimised when it points along $-\nabla L$.
+
+**So the steepest descent direction is $-\nabla L(\theta)$.** That is the whole idea.
+
+## The update rule
+
+$$
+\theta_{t+1} = \theta_t - \eta \nabla L(\theta_t)
+$$
+
+where $\eta > 0$ is the learning rate.
+
+## Why it actually decreases the loss
+
+Take the first-order Taylor expansion of $L$ around $\theta_t$:
+
+$$
+L(\theta_t - \eta \nabla L(\theta_t)) \approx L(\theta_t) - \eta \lVert \nabla L(\theta_t) \rVert^2
+$$
+
+The subtracted term is $\eta$ times a squared norm, so it is non-negative. For small
+enough $\eta$, the step strictly decreases the loss unless the gradient is already zero.
+
+That phrase — *for small enough* — is doing all the work, and it is exactly what breaks.
+
+<Callout type="note" title="The approximation has a horizon">
+  Taylor's theorem is local. The linear model of $L$ is only trustworthy in a
+  neighbourhood of $\theta_t$. A large $\eta$ steps outside that neighbourhood, where
+  the prediction "the loss goes down" carries no weight at all.
+</Callout>
+
+## Where it diverges
+
+Suppose $L$ is $\beta$-smooth, meaning its gradient is Lipschitz with constant $\beta$:
+
+$$
+\lVert \nabla L(x) - \nabla L(y) \rVert \leq \beta \lVert x - y \rVert
+$$
+
+Smoothness gives an upper bound on the loss after a step:
+
+$$
+L(\theta_{t+1}) \leq L(\theta_t) - \eta\left(1 - \frac{\beta \eta}{2}\right) \lVert \nabla L(\theta_t) \rVert^2
+$$
+
+The bracketed factor is positive exactly when $\eta < 2/\beta$. So:
+
+- $\eta < 1/\beta$ &mdash; steady monotone descent.
+- $1/\beta < \eta < 2/\beta$ &mdash; still converges, but overshoots and oscillates
+  across the valley.
+- $\eta > 2/\beta$ &mdash; the guarantee is gone. The loss climbs, and it climbs
+  geometrically.
+
+The single most common cause of a training run that produces `NaN` is $\eta$ on the
+wrong side of $2/\beta$.
+
+## Concretely: least squares
+
+For $L(\theta) = \frac{1}{2m} \lVert X\theta - y \rVert^2$, the gradient is
+
+$$
+\nabla L(\theta) = \frac{1}{m} X^{\top}(X\theta - y)
+$$
+
+and the smoothness constant is $\beta = \lambda_{\max}(X^{\top}X) / m$ &mdash; the
+largest eigenvalue of the scaled Gram matrix. This is why **feature scaling matters**:
+an unscaled feature inflates $\lambda_{\max}$, which shrinks the largest safe $\eta$,
+which forces every other parameter to crawl.
+
+```python title="gradient_descent.py" showLineNumbers {12-15}
+import numpy as np
+
+def gradient_descent(X, y, lr=0.01, epochs=1_000, tol=1e-8):
+    """Batch gradient descent for least squares. Returns (theta, history)."""
+    m, n = X.shape
+    theta = np.zeros(n)
+    history = []
+
+    for epoch in range(epochs):
+        residual = X @ theta - y
+        loss = (residual @ residual) / (2 * m)
+
+        grad = (X.T @ residual) / m          # shape (n,)
+        step = lr * grad
+        theta -= step
+
+        history.append(loss)
+
+        # Converged when the step stops moving us anywhere.
+        if np.linalg.norm(step) < tol:
+            break
+
+    return theta, history
+```
+
+And the diagnostic worth keeping next to it:
+
+```python title="lr_bound.py" showLineNumbers
+def max_safe_lr(X):
+    """Learning rates at or above this diverge for least squares."""
+    m = X.shape[0]
+    beta = np.linalg.eigvalsh(X.T @ X).max() / m
+    return 2.0 / beta
+```
+
+If your chosen learning rate is anywhere near `max_safe_lr(X)`, the oscillation you are
+seeing is not noise. It is the bound.
+
+<Callout type="tip" title="Reading a loss curve">
+  Smooth and slow: raise $\eta$. Jagged but trending down: you are between
+  $1/\beta$ and $2/\beta$ &mdash; usually fine, often the fastest setting. Rising or
+  `NaN`: you are past $2/\beta$; cut $\eta$ by 10x rather than tweaking it.
+</Callout>
+
+## Batch, stochastic, and mini-batch
+
+| Variant | Gradient per step | Cost per step | Behaviour |
+| --- | --- | --- | --- |
+| Batch | All $m$ examples | $O(mn)$ | Exact direction, smooth, slow |
+| Stochastic | 1 example | $O(n)$ | Noisy, escapes shallow minima |
+| Mini-batch | $b$ examples | $O(bn)$ | The practical default |
+
+Mini-batch wins for a reason that is not statistical: a batch of 32 to 512 is what
+saturates a GPU's matrix units. The variance reduction is real, but the hardware
+argument is the one that actually sets the number.
+
+## What to remember
+
+The update rule is a consequence, not a definition. It follows from taking the steepest
+direction and trusting a linear approximation for a short distance. Every failure mode
+of gradient descent &mdash; divergence, oscillation, glacial progress on ill-conditioned
+data &mdash; is a statement about how far you can trust that approximation, which is to
+say, about $\beta$.

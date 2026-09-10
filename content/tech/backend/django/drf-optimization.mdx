@@ -1,0 +1,155 @@
+---
+title: "Killing N+1 Queries in Django REST Framework"
+description: "A serializer that looks innocent can fire 400 queries for a 100-item page. How to find them, how to fix them, and why prefetch_related is not always the answer."
+date: "2026-06-11"
+tags: ["django", "orm", "postgres", "performance"]
+author: "Ish"
+---
+
+The Django ORM is lazy, and laziness composes badly with serialization. A serializer
+walks every object in a page and touches every field; each untouched relation becomes
+its own round trip. The endpoint works, the tests pass, and then the page size goes
+from 10 to 100 and latency goes up by a factor of ten.
+
+## The endpoint that looks fine
+
+```python title="serializers.py" showLineNumbers
+class BookSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source="author.name")     # [!code highlight]
+    tags = serializers.StringRelatedField(many=True)              # [!code highlight]
+
+    class Meta:
+        model = Book
+        fields = ["id", "title", "author_name", "tags"]
+
+
+class BookViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+```
+
+For a page of 100 books this issues:
+
+- 1 query for the books
+- 100 queries for `book.author` — one per row
+- 100 queries for `book.tags` — one per row
+
+201 queries. Each is fast on its own, which is exactly why it hides: no single query
+shows up in your slow-query log.
+
+<Callout type="note" title="Two relations, two different fixes">
+  `select_related` follows forward `ForeignKey` and `OneToOne` relations with a SQL
+  `JOIN`. `prefetch_related` handles reverse FKs and `ManyToMany` with a *second* query
+  and an in-Python join. Using the wrong one silently does nothing.
+</Callout>
+
+## The fix
+
+```python title="views.py" showLineNumbers {3-6}
+class BookViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = BookSerializer
+    queryset = (
+        Book.objects
+        .select_related("author")      # JOIN: one query total
+        .prefetch_related("tags")      # second query, joined in Python
+    )
+```
+
+201 queries becomes 2.
+
+## Measuring, not guessing
+
+Do not trust your reading of the serializer. Assert on the query count in a test, so a
+regression fails CI rather than pager duty:
+
+```python title="tests/test_books.py" showLineNumbers
+def test_book_list_query_count(client, django_assert_num_queries):
+    BookFactory.create_batch(100)
+
+    # Constant in the page size. That is the property worth protecting.
+    with django_assert_num_queries(2):
+        response = client.get("/api/books/")
+
+    assert response.status_code == 200
+```
+
+The number itself matters less than its *independence from the row count*. A test that
+asserts `2` and a test that asserts `5` are both fine; a query count that scales with
+the page is the bug.
+
+## Where prefetch_related stops helping
+
+`prefetch_related` fetches **every** related row, then filters in Python. If each book
+has 5,000 tags and you only render 3, you have moved the problem rather than solved it.
+Push the filter into SQL with a `Prefetch` object:
+
+```python title="views.py" showLineNumbers
+from django.db.models import Prefetch
+
+queryset = Book.objects.prefetch_related(
+    Prefetch(
+        "tags",
+        queryset=Tag.objects.filter(is_public=True).order_by("name")[:3],
+        to_attr="visible_tags",
+    )
+)
+```
+
+Then point the serializer at `visible_tags` instead of `tags`. The slice happens in the
+database.
+
+## Aggregates belong in the database too
+
+A `SerializerMethodField` that calls `.count()` is an N+1 wearing a disguise:
+
+<Columns>
+
+```python title="Before" showLineNumbers
+class AuthorSerializer(...):
+    book_count = (
+        serializers.SerializerMethodField()
+    )
+
+    def get_book_count(self, obj):
+        # One COUNT per author.
+        return obj.books.count()
+```
+
+```python title="After" showLineNumbers
+# In the view:
+Author.objects.annotate(
+    book_count=Count("books")
+)
+
+# In the serializer:
+book_count = serializers.IntegerField(
+    read_only=True
+)
+```
+
+</Columns>
+
+The annotated version computes every count in the single list query.
+
+<Callout type="warning" title="Annotate plus multiple joins multiplies rows">
+  Two `Count` annotations over two different relations will produce a Cartesian product
+  and inflate both numbers. Use `distinct=True`, or split into subqueries, and check the
+  arithmetic against a known fixture.
+</Callout>
+
+## A checklist
+
+| Symptom | Reach for |
+| --- | --- |
+| Forward `FK` / `OneToOne` in output | `select_related` |
+| Reverse `FK` or `ManyToMany` | `prefetch_related` |
+| Only a slice of a large relation | `Prefetch(queryset=...)` |
+| `.count()` or `.exists()` per row | `annotate` with `Count` / `Exists` |
+| A value derived from one related row | `Subquery` + `OuterRef` |
+
+Instrument first. `django-debug-toolbar` in development, `CaptureQueriesContext` in
+tests, and `pg_stat_statements` in production will each tell you a different half of
+the story.
+
+The rule that survives every framework version: **query count should be a function of
+the endpoint, not of the number of rows it returns.**

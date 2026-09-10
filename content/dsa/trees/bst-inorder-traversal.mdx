@@ -1,0 +1,191 @@
+---
+title: "Inorder Traversal: The Only BST Property That Matters"
+description: "Recursive, iterative, and Morris traversal — plus the observation that turns half of the BST problem set into a one-liner."
+date: "2026-08-30"
+tags: ["trees", "bst", "traversal", "leetcode"]
+author: "Ish"
+---
+
+There is exactly one fact you need about binary search trees:
+
+> **An inorder traversal of a BST visits its keys in sorted order.**
+
+Almost every "medium" BST problem is that sentence plus a small amount of bookkeeping.
+Validate a BST, find the k-th smallest, find the minimum absolute difference, recover
+two swapped nodes, convert to a sorted list — all of them are *inorder traversal, and
+then something trivial*.
+
+## The recursive version
+
+Left subtree, node, right subtree.
+
+```python title="recursive.py" showLineNumbers
+def inorder(root):
+    result = []
+
+    def walk(node):
+        if not node:
+            return
+        walk(node.left)          # everything smaller
+        result.append(node.val)  # [!code highlight]
+        walk(node.right)         # everything larger
+
+    walk(root)
+    return result
+```
+
+<Complexity time="O(n)" space="O(h)" note="h is tree height. Balanced: O(log n). Degenerate (a linked list): O(n) — and on CPython that means a RecursionError at ~1000 nodes." />
+
+Read enough and this stops being three lines and becomes one idea: *the visit sits
+between the two recursive calls.* Move it before them and you have preorder. Move it
+after and you have postorder. That is the entire difference.
+
+## The iterative version
+
+The recursion is doing one job you can do yourself: remembering the ancestors you still
+owe a visit to. Make the stack explicit.
+
+```python title="iterative.py" showLineNumbers {6-9}
+def inorder(root):
+    result, stack = [], []
+    node = root
+
+    while node or stack:
+        # Descend as far left as possible, remembering the path.
+        while node:
+            stack.append(node)
+            node = node.left
+
+        # Nothing further left: this node is next in sorted order.
+        node = stack.pop()
+        result.append(node.val)
+
+        # Its left subtree and itself are done; go right.
+        node = node.right
+
+    return result
+```
+
+<Complexity time="O(n)" space="O(h)" note="Same bounds, but the stack lives on the heap — no recursion limit, and it can be paused mid-traversal." />
+
+That last property is the one worth having. Because the state is just `stack` and
+`node`, you can stop between any two visits. This is how you build a BST **iterator**
+with $O(1)$ amortised `next()`:
+
+```python title="bst_iterator.py" showLineNumbers
+class BSTIterator:
+    def __init__(self, root):
+        self.stack = []
+        self._push_left(root)
+
+    def _push_left(self, node):
+        while node:
+            self.stack.append(node)
+            node = node.left
+
+    def next(self):
+        node = self.stack.pop()
+        self._push_left(node.right)
+        return node.val
+
+    def has_next(self):
+        return len(self.stack) > 0
+```
+
+Each node is pushed once and popped once across the whole traversal, so the $n$ calls
+to `next()` cost $O(n)$ total &mdash; amortised $O(1)$ each, even though an individual
+call can do $O(h)$ work.
+
+## Morris traversal: O(1) space
+
+You can traverse without a stack at all, by temporarily rewiring the tree. For each
+node, find its **inorder predecessor** — the rightmost node of its left subtree — and
+point that node's empty right pointer back at the current node. That thread is how you
+find your way back up without having stored anything.
+
+```python title="morris.py" showLineNumbers {10-14,19-22}
+def inorder(root):
+    result = []
+    node = root
+
+    while node:
+        if not node.left:
+            result.append(node.val)
+            node = node.right
+        else:
+            # Find the inorder predecessor.
+            pred = node.left
+            while pred.right and pred.right is not node:
+                pred = pred.right
+
+            if not pred.right:
+                # First visit: thread it, then go left.
+                pred.right = node
+                node = node.left
+            else:
+                # Second visit: the thread is ours. Unthread and visit.
+                pred.right = None
+                result.append(node.val)
+                node = node.right
+
+    return result
+```
+
+<Complexity time="O(n)" space="O(1)" note="Each edge is traversed at most three times, so the constant is worse than the stack version despite the same asymptotic time." />
+
+<Callout type="warning" title="Morris mutates the tree">
+  It restores every pointer before finishing, but *during* the traversal the structure
+  is temporarily wrong. That makes it unsafe under concurrent reads, and it fails
+  outright on an immutable tree. Interviewers ask for it; production rarely wants it.
+</Callout>
+
+## The pattern, applied
+
+Once you see inorder as "a sorted stream", these all collapse:
+
+| Problem | Solution |
+| --- | --- |
+| Validate BST | Stream is strictly increasing |
+| K-th smallest | Stop the iterator after `k` calls |
+| Minimum absolute difference | Min gap between consecutive values |
+| Two nodes swapped, recover BST | Find the (at most two) descents |
+| Range sum in `[lo, hi]` | Prune: skip left when `val < lo` |
+
+Validation is the one people get wrong most often, because the naive version compares
+each node only against its immediate children:
+
+<Columns>
+
+```python title="Wrong" showLineNumbers
+def is_valid(node):
+    if not node:
+        return True
+    # Misses violations that are
+    # not parent-child adjacent.
+    if node.left and \
+       node.left.val >= node.val:
+        return False
+    return (is_valid(node.left)
+            and is_valid(node.right))
+```
+
+```python title="Right" showLineNumbers
+def is_valid(root):
+    prev = None
+    for val in inorder_stream(root):
+        # Strictly increasing, no
+        # bounds bookkeeping needed.
+        if prev is not None and val <= prev:
+            return False
+        prev = val
+    return True
+```
+
+</Columns>
+
+The classic counterexample for the left version: root `10`, left child `5`, and `5`'s
+right child `12`. Every parent-child pair is locally valid, but `12` sits in the left
+subtree of `10`. The inorder stream catches it immediately, because it emits
+`5, 12, 10` — not sorted.
+
+Learn the traversal properly. The problems come for free.

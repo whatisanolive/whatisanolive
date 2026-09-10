@@ -1,26 +1,611 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* The theme is an explicit attribute on <html>, not a media query, so the
+   toggle can override the OS preference. */
+@custom-variant dark ([data-theme="dark"] &);
+
+/* -------------------------------------------------------------------------- */
+/*                              Semantic tokens                               */
+/* -------------------------------------------------------------------------- */
+/*
+  Components are written once against `bg-ground`, `text-ink`, `border-edge`,
+  `text-accent` and so on. Each `[data-pillar]` block below redefines the raw
+  variables, so a section retheme is a single attribute on the shell — no
+  conditional class strings anywhere in the components.
+*/
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ground: var(--ground);
+  --color-ground-alt: var(--ground-alt);
+  --color-surface: var(--surface);
+  --color-edge: var(--edge);
+  --color-edge-soft: var(--edge-soft);
+  --color-ink: var(--ink);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-deep: var(--accent-deep);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: var(--font-fraunces), ui-serif, Iowan Old Style, Georgia, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/*
+  Two themes across four grounds.
+
+  Light is the default: a light grey home, so stepping into a pastel section is
+  a shift in hue rather than a jump in brightness. Dark keeps the original home
+  grey and pulls each section's hue down to that same depth.
+
+  Every value is generated and contrast-checked (body 8:1, muted 6:1, faint
+  4.5:1) against BOTH the page ground and the raised card surface — in light
+  themes the ground is the harder background, in dark themes the card is.
+*/
+
+/* Section hues, for the places all three appear at once: the nav, the homepage
+   cards. Deep on light, pastel on dark. */
+:root {
+  --hue-tech: #2c6baf;
+  --hue-dsa: #2a7355;
+  --hue-blank-canvas: #6244a8;
+}
+
+[data-theme="dark"] {
+  --hue-tech: #9ec5ff;
+  --hue-dsa: #9fdcbb;
+  --hue-blank-canvas: #c6b0f5;
+}
+
+/* -------------------------------- Light ---------------------------------- */
+
+/* Home — light grey paper. */
+:root {
+  color-scheme: light;
+  --ground: #ebebed;
+  --ground-alt: #f4f4f5;
+  --surface: #ffffff;
+  --edge: #d7d7db;
+  --edge-soft: #e5e5e8;
+  --ink: #17171a;
+  --body: #44444b;
+  --muted: #57575f;
+  --faint: #6a6a72;
+  --accent: #3b4552;
+  --accent-deep: #2e353e;
+  --grid-line: rgb(23 23 26 / 0.055);
+}
+
+/* Tech — blue. */
+:root:has([data-pillar="tech"]),
+[data-pillar="tech"] {
+  color-scheme: light;
+  --ground: #e7eef7;
+  --ground-alt: #eef3fa;
+  --surface: #ffffff;
+  --edge: #cbd9ea;
+  --edge-soft: #dde7f3;
+  --ink: #16202e;
+  --body: #3c4759;
+  --muted: #4d5a6c;
+  --faint: #616c7e;
+  --accent: #2c6baf;
+  --accent-deep: #245182;
+  --grid-line: rgb(23 23 26 / 0.055);
+}
+
+/* DSA — green. */
+:root:has([data-pillar="dsa"]),
+[data-pillar="dsa"] {
+  color-scheme: light;
+  --ground: #e4efe8;
+  --ground-alt: #edf5f0;
+  --surface: #ffffff;
+  --edge: #c6dace;
+  --edge-soft: #d9e9e0;
+  --ink: #13231a;
+  --body: #394940;
+  --muted: #4b5c52;
+  --faint: #5f6f66;
+  --accent: #2a7355;
+  --accent-deep: #225740;
+  --grid-line: rgb(23 23 26 / 0.055);
+}
+
+/* Blank Canvas — violet. */
+:root:has([data-pillar="blank-canvas"]),
+[data-pillar="blank-canvas"] {
+  color-scheme: light;
+  --ground: #ede9f7;
+  --ground-alt: #f4f1fb;
+  --surface: #ffffff;
+  --edge: #d7cfeb;
+  --edge-soft: #e5dff3;
+  --ink: #1e1830;
+  --body: #49415d;
+  --muted: #5c5371;
+  --faint: #6e6680;
+  --accent: #6244a8;
+  --accent-deep: #4a357e;
+  --grid-line: rgb(23 23 26 / 0.055);
+}
+
+/* --------------------------------- Dark ---------------------------------- */
+/*
+  `[data-theme="dark"]` sits on <html>, matching `:root` for specificity, so
+  these blocks win on source order. The descendant forms out-specify the bare
+  `[data-pillar]` selectors above for the same reason.
+*/
+
+/* Home — the original grey, kept. */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #1a1a1e;
+  --ground-alt: #212126;
+  --surface: #26262c;
+  --edge: #35353d;
+  --edge-soft: #2c2c33;
+  --ink: #f4f4f5;
+  --body: #bdbdc2;
+  --muted: #a3a3ab;
+  --faint: #8c8c93;
+  --accent: #a9c8f0;
+  --accent-deep: #c3d8f4;
+  --grid-line: rgb(255 255 255 / 0.05);
+}
+
+/* Tech — blue, brought down to the home grey's depth. */
+[data-theme="dark"]:has([data-pillar="tech"]),
+[data-theme="dark"] [data-pillar="tech"] {
+  color-scheme: dark;
+  --ground: #161c26;
+  --ground-alt: #1c2431;
+  --surface: #202a38;
+  --edge: #2f3c4e;
+  --edge-soft: #232e3c;
+  --ink: #e8eef8;
+  --body: #b7c2ce;
+  --muted: #99a9ba;
+  --faint: #8391a2;
+  --accent: #8fbdf0;
+  --accent-deep: #b1d1f4;
+  --grid-line: rgb(255 255 255 / 0.05);
+}
+
+/* DSA — green, brought down to the home grey's depth. */
+[data-theme="dark"]:has([data-pillar="dsa"]),
+[data-theme="dark"] [data-pillar="dsa"] {
+  color-scheme: dark;
+  --ground: #141d18;
+  --ground-alt: #1a251f;
+  --surface: #1e2b24;
+  --edge: #2c3f34;
+  --edge-soft: #212f27;
+  --ink: #e6f0e9;
+  --body: #b5c3b9;
+  --muted: #97aa9e;
+  --faint: #819389;
+  --accent: #85cfa6;
+  --accent-deep: #aaddc1;
+  --grid-line: rgb(255 255 255 / 0.05);
+}
+
+/* Blank Canvas — violet, brought down to the home grey's depth. */
+[data-theme="dark"]:has([data-pillar="blank-canvas"]),
+[data-theme="dark"] [data-pillar="blank-canvas"] {
+  color-scheme: dark;
+  --ground: #1a1626;
+  --ground-alt: #211c30;
+  --surface: #272038;
+  --edge: #392f4f;
+  --edge-soft: #2a233b;
+  --ink: #ece7f6;
+  --body: #bdb7cc;
+  --muted: #a69dba;
+  --faint: #8f86a1;
+  --accent: #b89ded;
+  --accent-deep: #cdbaf2;
+  --grid-line: rgb(255 255 255 / 0.05);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                    Base                                    */
+/* -------------------------------------------------------------------------- */
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+  }
+
+  body {
+    background-color: var(--ground);
+    color: var(--body);
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--accent) 28%, transparent);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--edge) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--edge);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* -------------------------------------------------------------------------- */
+/*                                 Utilities                                  */
+/* -------------------------------------------------------------------------- */
+
+@utility grid-backdrop {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 0%, #000 35%, transparent 100%);
+}
+
+/** Full-bleed ruled grid, used behind section pages. */
+@utility grid-paper {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+@utility text-balance-pretty {
+  text-wrap: pretty;
+}
+
+/** Serif display type: tight, slightly negative tracking, optical weight. */
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.08;
+}
+
+/** Small uppercase mono label — the editorial "kicker". */
+@utility kicker {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                             Article typography                             */
+/* -------------------------------------------------------------------------- */
+/*
+  Deliberately unlayered. The typography plugin emits its rules into Tailwind's
+  `utilities` layer, and layer order beats specificity — anything written inside
+  `@layer components` here loses to `.prose` no matter how specific it is.
+  Unlayered CSS outranks every layer, so these overrides actually apply.
+*/
+
+.prose-blog {
+  --tw-prose-body: var(--body);
+  --tw-prose-headings: var(--ink);
+  --tw-prose-lead: var(--muted);
+  --tw-prose-links: var(--accent-deep);
+  --tw-prose-bold: var(--ink);
+  --tw-prose-counters: var(--muted);
+  --tw-prose-bullets: var(--edge);
+  --tw-prose-hr: var(--edge);
+  --tw-prose-quotes: var(--ink);
+  --tw-prose-quote-borders: var(--accent);
+  --tw-prose-captions: var(--muted);
+  --tw-prose-code: var(--ink);
+  /* The plugin defaults `pre` to a dark slate. Our code cards paint
+     themselves, so hand the background back to the figure. */
+  --tw-prose-pre-bg: transparent;
+  --tw-prose-pre-code: inherit;
+  --tw-prose-th-borders: var(--edge);
+  --tw-prose-td-borders: var(--edge-soft);
+
+  max-width: none;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+
+/* Headings are the serif; body stays sans for long-form legibility. */
+.prose-blog :is(h2, h3, h4) {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  scroll-margin-top: 6rem;
+}
+
+.prose-blog h2 {
+  font-size: 1.75rem;
+  line-height: 1.2;
+  margin-top: 3rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--edge-soft);
+}
+
+.prose-blog .heading-anchor {
+  opacity: 0;
+  margin-left: 0.35em;
+  font-weight: 400;
+  color: var(--faint);
+  text-decoration: none;
+  transition: opacity 150ms ease;
+}
+
+.prose-blog :is(h2, h3, h4):hover .heading-anchor,
+.prose-blog .heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+.prose-blog :not(pre) > code {
+  background-color: color-mix(in oklab, var(--accent) 9%, transparent);
+  border: 1px solid color-mix(in oklab, var(--accent) 18%, transparent);
+  border-radius: 0.375rem;
+  padding: 0.15em 0.4em;
+  font-size: 0.86em;
+  font-weight: 450;
+  color: var(--accent-deep);
+}
+
+.prose-blog :not(pre) > code::before,
+.prose-blog :not(pre) > code::after {
+  content: none;
+}
+
+/* A lead paragraph, set larger — the editorial opener. */
+.prose-blog > p:first-of-type {
+  font-size: 1.1875rem;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.prose-blog blockquote {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          Code blocks (Shiki output)                        */
+/* -------------------------------------------------------------------------- */
+
+/* The badge and copy button are positioned against the figure. Without a
+   filename bar to sit in, the code needs headroom so line one is not hidden. */
+[data-rehype-pretty-code-figure]:not(:has(figcaption)) pre {
+  padding-top: 2.75rem;
+}
+
+[data-rehype-pretty-code-figure] pre {
+  /* Reset the typography plugin's own pre styling: it adds vertical margins
+     and a radius that would show as gaps inside the card. */
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 1rem 0;
+  line-height: 1.65;
+  font-size: 0.8125rem;
+  tab-size: 2;
+}
+
+[data-rehype-pretty-code-figure] code {
+  display: grid;
+  background: transparent;
+  font-family: var(--font-mono);
+}
+
+/* Shiki emits both themes as custom properties on every token, because
+   highlighting happens at build time. Pick one per theme. */
+[data-rehype-pretty-code-figure] span {
+  color: var(--shiki-light);
+}
+
+[data-theme="dark"] [data-rehype-pretty-code-figure] span {
+  color: var(--shiki-dark);
+}
+
+[data-line] {
+  display: block;
+  padding-inline: 1.15rem 1.5rem;
+  border-left: 2px solid transparent;
+}
+
+/* Range meta like ```js {2,5-7} and the // [!code highlight] notation. */
+[data-line].line--highlighted,
+[data-line].highlighted {
+  background-color: color-mix(in oklab, var(--accent) 10%, transparent);
+  border-left-color: color-mix(in oklab, var(--accent) 55%, transparent);
+}
+
+.chars--highlighted,
+.highlighted-word {
+  background-color: color-mix(in oklab, var(--accent) 16%, transparent);
+  border-radius: 0.25rem;
+  padding: 0.1em 0.15em;
+}
+
+[data-line].diff {
+  position: relative;
+}
+
+[data-line].diff::before {
+  position: absolute;
+  left: 0.35rem;
+}
+
+[data-line].diff.add {
+  background-color: color-mix(in oklab, #2a7355 12%, transparent);
+  border-left-color: color-mix(in oklab, #2a7355 55%, transparent);
+}
+
+[data-line].diff.add::before {
+  content: "+";
+  color: #2a7355;
+}
+
+[data-line].diff.remove {
+  background-color: color-mix(in oklab, #b3405e 10%, transparent);
+  border-left-color: color-mix(in oklab, #b3405e 50%, transparent);
+  opacity: 0.7;
+}
+
+[data-line].diff.remove::before {
+  content: "-";
+  color: #b3405e;
+}
+
+pre:has(.focused) [data-line]:not(.focused) {
+  filter: blur(2px);
+  opacity: 0.5;
+  transition: filter 250ms ease, opacity 250ms ease;
+}
+
+pre:has(.focused):hover [data-line]:not(.focused) {
+  filter: none;
+  opacity: 1;
+}
+
+code[data-line-numbers] {
+  counter-reset: line;
+}
+
+code[data-line-numbers] > [data-line]::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 1.4rem;
+  margin-right: 1.25rem;
+  text-align: right;
+  color: var(--faint);
+  user-select: none;
+}
+
+code[data-line-numbers-max-digits="3"] > [data-line]::before {
+  width: 2.1rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                            Consistency heatmap                             */
+/* -------------------------------------------------------------------------- */
+/*
+  The calendar is our own SVG (`components/ActivityHeatmap.tsx`), so the squares
+  carry only `data-level` and take every colour from here. That keeps them in
+  step with the theme toggle with no client JavaScript.
+
+  Light-mode steps are deliberately dark: on a pale ground a pastel green sits
+  at ~1.2:1 against the page and reads as empty. These run 1.9:1 to 8.5:1.
+*/
+
+.activity-calendar rect[data-level="0"] {
+  fill: #d8d8de;
+}
+.activity-calendar rect[data-level="1"] {
+  fill: #79bd9a;
+}
+.activity-calendar rect[data-level="2"] {
+  fill: #489d75;
+}
+.activity-calendar rect[data-level="3"] {
+  fill: #2a7355;
+}
+.activity-calendar rect[data-level="4"] {
+  fill: #174a35;
+}
+
+.activity-calendar rect {
+  stroke: rgb(23 23 26 / 0.09);
+}
+
+.activity-calendar__label {
+  fill: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+[data-theme="dark"] .activity-calendar rect[data-level="0"] {
+  fill: #26262c;
+}
+[data-theme="dark"] .activity-calendar rect[data-level="1"] {
+  fill: #2f4c3c;
+}
+[data-theme="dark"] .activity-calendar rect[data-level="2"] {
+  fill: #427056;
+}
+[data-theme="dark"] .activity-calendar rect[data-level="3"] {
+  fill: #5f9d7c;
+}
+[data-theme="dark"] .activity-calendar rect[data-level="4"] {
+  fill: #93d3ae;
+}
+
+[data-theme="dark"] .activity-calendar rect {
+  stroke: rgb(255 255 255 / 0.05);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                 KaTeX (math)                               */
+/* -------------------------------------------------------------------------- */
+
+.katex {
+  color: var(--ink);
+  font-size: 1.05em;
+}
+
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1rem 0.25rem;
+  margin-block: 1.75rem;
+}
+
+.katex-display > .katex {
+  text-align: center;
+}
+
+.katex .katex-error {
+  color: #b3405e;
 }
