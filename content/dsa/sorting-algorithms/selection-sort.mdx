@@ -1,0 +1,119 @@
+---
+title: "Select Sort Algorithm"
+description: "Lomuto and Hoare partitioning, with random pivots, it can get real unlucky"
+date: "2026-09-15"
+tags: ["sorting"]
+author: "whatisanolive"
+---
+
+There is exactly one fact you need about quicksort:
+
+> **partitioning puts one element in its correct place and everything smaller to its left and everything larger to its right.**
+
+Pivot makes or breaks this algorithm, it'll take O($n^2$), which is as good as bubble sort. No one wants to be bubble sort.
+
+## The recursive version (Lomuto partition)
+
+Picking the last element as pivot. 
+
+```python title="lomuto.py" showLineNumbers
+def inorder(root):
+    result = []
+
+    def quicksort(arr, lo=0, hi=None):
+    if hi is None:
+        hi = len(arr) - 1
+    if lo >= hi:
+        return
+ 
+    pivot = arr[hi]
+    i = lo  # boundary: arr[lo:i] are all < pivot
+    for j in range(lo, hi):
+        if arr[j] < pivot:
+            arr[i], arr[j] = arr[j], arr[i]
+            i += 1
+    arr[i], arr[hi] = arr[hi], arr[i]  # pivot drops into place
+ 
+    quicksort(arr, lo, i - 1)
+    quicksort(arr, i + 1, hi)
+```
+
+<Complexity time="O(n log n) average, O(n²) worst" space="O(log n)" note="Space is the recursion stack, not extra arrays — this sorts in place. Worst case is a sorted or reverse-sorted array with a fixed last-element pivot: each partition peels off exactly one element." />
+
+Read enough and this stops being three lines and becomes one idea: *the visit sits
+between the two recursive calls.* Move it before them and you have preorder. Move it
+after and you have postorder. That is the entire difference.
+
+Read enough and the loop stops being "swap stuff around" and becomes one idea: *`i` is
+always the correct final position for the pivot, once the loop ends.* Everything before
+`i` is smaller, everything from `i` to `j-1` is larger-or-equal, and `j` is the
+unexplored frontier. That invariant is the whole algorithm.
+
+
+## The Hoare partition (fewer swaps)
+ 
+Lomuto is easy to explain but does up to 3x more swaps than necessary. Hoare's original
+scheme uses two pointers closing in from both ends. It's faster in practice, but the
+pivot does **not** end up at the returned index — only the array is correctly split
+around it.
+ 
+```python title="hoare.py" showLineNumbers {8-16}
+def quicksort(arr, lo=0, hi=None):
+    if hi is None:
+        hi = len(arr) - 1
+    if lo >= hi:
+        return
+ 
+    def partition(lo, hi):
+        pivot = arr[lo]
+        i, j = lo - 1, hi + 1
+        while True:
+            i += 1
+            while arr[i] < pivot:
+                i += 1
+            j -= 1
+            while arr[j] > pivot:
+                j -= 1
+            if i >= j:
+                return j
+            arr[i], arr[j] = arr[j], arr[i]
+ 
+    p = partition(lo, hi)
+    quicksort(arr, lo, p)
+    quicksort(arr, p + 1, hi)
+```
+ 
+<Callout type="warning" title="Don't mix partition schemes with recursion boundaries">
+  Hoare's partition returns a split point `j`, not a final pivot position. Recursing on
+  `(lo, p)` and `(p+1, hi)` — as above — is correct. Recursing on `(lo, p-1)` and
+  `(p+1, hi)`, the Lomuto pattern, can drop elements or infinite-loop. The two schemes
+  are not interchangeable; copy the recursion call that matches the partition you wrote.
+</Callout>
+
+
+## Why the pivot choice is the whole game
+ 
+Fixed-pivot quicksort (always first, always last) degrades to O(n²) on inputs an
+adversary — or just bad luck, like an already-sorted array — can construct trivially.
+The fix costs three lines: pick the pivot at random, swap it to the end, then run
+Lomuto exactly as before.
+ 
+```python title="randomized_pivot.py" showLineNumbers {2-3}
+def partition(arr, lo, hi):
+    r = random.randint(lo, hi)          # [!code highlight]
+    arr[r], arr[hi] = arr[hi], arr[r]   # [!code highlight]
+    pivot = arr[hi]
+    i = lo
+    for j in range(lo, hi):
+        if arr[j] < pivot:
+            arr[i], arr[j] = arr[j], arr[i]
+            i += 1
+    arr[i], arr[hi] = arr[hi], arr[i]
+    return i
+```
+
+<Complexity time="O(n log n) expected, O(n²) worst (probability → 0)" space="O(log n) expected" note="An adversary who can see your random calls can still force O(n²), but an adversary who only sees the input array cannot. That's the actual guarantee — expected time over the algorithm's own randomness, not over the input distribution." />
+The worst case never goes away with random pivots — it just becomes astronomically
+unlikely instead of guaranteed by feeding it sorted input. That distinction is usually
+worth a sentence in an interview: "randomization doesn't fix the worst case, it makes an
+adversary unable to trigger it deterministically."
