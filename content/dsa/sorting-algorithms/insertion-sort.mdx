@@ -1,0 +1,64 @@
+---
+title: "Insertion sort algorithm: how you organize your hand in poker"
+description: 
+date: "2026-10-24"
+tags: ["sorting"]
+author: "whatisanolive"
+---
+
+If you play cards then you know:
+
+> **_Insertion sort is like organizing a hand of playing cards—you pick up one item at a time, slide it backward into its proper spot among the elements you've already sorted, and pretend it's fast because it works great on small lists._**
+
+_The algorithm builds the final sorted array one item at a time. It takes each new element and marches it backward through the sorted portion until it finds where it belongs, swapping adjacent out-of-order pairs along the way._
+
+## The problem
+
+_Rearrange the list in ascending order so your OCD can finally rest:_
+
+```plaintext
+Input:  [3, 1, 6, 7, 2, -7, 8]
+Output: [-7, 1, 2, 3, 6, 7, 8]
+```
+
+## Brute force first
+
+_We iterate starting from the second element, then run a backward inner loop to bubble smaller elements down into their correct sorted position._
+
+```python
+def insertion_sort(nums):
+    n = len(nums)
+
+    for i in range(1, n):
+        for j in range(i, 0, -1):
+            if nums[j-1] > nums[j]:
+                nums[j-1], nums[j] = nums[j], nums[j-1]
+
+    return nums
+```
+
+| Time       | Space     |
+| ---------- | --------- |
+| O(n²)      | O(1)      |
+## The better approach
+
+_The break works because of a superpower that the left side of your array possesses: it’s already sorted. If your current element is bigger than or equal to the neighbor directly to its left, and that left side is already sorted, it means your element has safely found a spot where it's larger than everything below it. Continuing to loop down the rest of the array would be completely pointless because those numbers are even smaller!_
+
+```python
+def insertion_sort(nums):
+    for i in range(1, len(nums)):
+        for j in range(i, 0, -1):
+            if nums[j-1] > nums[j]:
+                nums[j-1], nums[j] = nums[j], nums[j-1]
+            else:
+                break
+    return nums
+```
+
+| Time       | Space     |
+| ---------- | --------- |
+| O(n²)/O(n) | O(1)      |
+
+If the list is already sorted (best case), then the iteration stops immediately, therefore best case O(n) time complexity. On average it's time complexity is still O(n²)
+
+The space complexity stays at O(1) because we're sorting entirely in-place.
