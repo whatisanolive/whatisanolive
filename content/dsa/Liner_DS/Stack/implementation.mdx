@@ -1,0 +1,192 @@
+---
+title: "LIFO: How I Deal with Every Social Situation (Stack Implementations in Python)"
+date: "2026-10-26"
+description: "A hilarious dive into the Stack data structure, exploring LIFO behavior through social awkwardness while building both Dynamic Array and Linked List implementations in Python."
+tags: ["Stack", "Data Structures"]
+---
+
+# LIFO: How I Deal with Every Social Situation (Stack Implementations in Python)
+
+Let’s be honest: humans are just terrible data structures. But if I had to classify my psychological architecture during a crowded social gathering, family reunion, or forced networking event, I am 100% a **Stack**. 
+
+Specifically, I operate on the **LIFO (Last In, First Out)** principle. 
+
+* **Push:** Someone introduces a new topic of conversation, a fresh social obligation, or a question about my career choices. It goes right to the top of my brain.
+* **Pop:** I immediately interact with or address *only* that absolute latest thing, completely burying anything that happened five minutes ago.
+* **Overflow:** Someone asks me *one* more question after I've hit capacity, and my social processor throws a `RecursionError` and shuts down.
+
+Today, we are going to channel this antisocial coping mechanism into actual code. We'll build a Stack in Python using **two different approaches**: 
+1. **Dynamic Arrays** (Python's built-in lists)
+2. **Linked Lists** (For when your social pointers are hanging by a thread)
+
+---
+
+## Part 1: The Array-Based Stack (The "Overstuffed Backpack" Approach)
+
+Using a Python list is the easiest way to build a stack. You just treat the end of the list as the "top" of the stack. `append()` is your `push`, and `pop()` handles the rest.
+
+### The Python Code
+
+```python
+class Stack:
+    def __init__(self):
+        self.items = []
+
+    def __repr__(self):
+        # We reverse it so the top of the stack looks like the front
+        elements = [str(item) for item in reversed(self.items)]
+        return ", ".join(elements)
+
+    def push(self, item):
+        self.items.append(item)
+
+    def pop(self):
+        if not self.items:
+            return None
+        return self.items.pop(-1)
+    
+    def peek(self):
+        if not self.items:
+            return None
+        return self.items[-1]
+
+    def size(self):
+        return len(self.items)
+    
+    def is_empty(self):
+        # Pro-tip: `not self.items` is O(1) and faster than `self.items == []` 
+        # because it checks the internal size attribute instead of allocating a new list.
+        return not self.items
+
+
+if __name__ == '__main__':
+    stack = Stack()
+    print("Stack is empty: ", stack.is_empty())
+    
+    # Pushing social obligations onto the mental stack
+    stack.push(10) # "Smile and wave"
+    stack.push(7)  # "Pretend to look at phone"
+    stack.push(15) # "Talk about the weather"
+    stack.push(13) # "Nod politely"
+    stack.push(1)  # "Eat another mini quiche"
+    stack.push(0)  # "Awkward eye contact"
+
+    print("stack: ", stack)
+    print("peek (What's stressing me out right now): ", stack.peek())
+    print("popped (Escaped interaction): ", stack.pop())
+    print("popped (Escaped interaction): ", stack.pop())
+    print("stack: ", stack)
+    print("Stack is empty: ", stack.is_empty())
+```
+
+### The Output
+
+```text
+Stack is empty:  True
+stack:  0, 1, 13, 15, 7, 10
+peek (What's stressing me out right now):  0
+popped (Escaped interaction):  0
+popped (Escaped interaction):  1
+stack:  13, 15, 7, 10
+Stack is empty:  False
+```
+
+---
+
+## Part 2: The Linked List Stack (The "Precarious House of Cards" Approach)
+
+What if you don't want to use Python lists? What if you want explicit control over memory nodes, much like how my thoughts are loosely connected by caffeine and panic? Enter the **Linked List Stack**.
+
+Instead of a contiguous block of memory, each element lives in its own `Node` pointing strictly to the one below it.
+
+### The Python Code
+
+```python
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.next = None
+
+
+class Stack:
+    def __init__(self):
+        self.top = None
+        self.size = 0
+
+    def __len__(self):
+        return self.size
+    
+    def __repr__(self):
+        items = []
+        curr = self.top
+        while curr is not None:
+            items.append(str(curr.data))
+            curr = curr.next
+        return ", ".join(items)
+
+    def push(self, data):
+        new_node = Node(data)
+        new_node.next = self.top
+        self.top = new_node
+        self.size += 1
+
+    def pop(self):
+        if self.top is None:
+            raise ValueError("Stack is empty")
+        
+        popped_value = self.top.data
+        self.top = self.top.next
+        self.size -= 1
+        return popped_value
+
+    def peek(self):
+        if self.top is None:
+            raise ValueError("Stack is empty")
+        return self.top.data
+
+    def is_empty(self):
+        return self.top is None
+
+
+if __name__ == '__main__':
+    stack = Stack()
+    print("Stack is empty: ", stack.is_empty())
+    
+    stack.push(10)
+    stack.push(7)
+    stack.push(15)
+    stack.push(13)
+    stack.push(1)
+    stack.push(0)
+
+    print("stack: ", stack)
+    print("peek: ", stack.peek())
+    print("popped: ", stack.pop())
+    print("popped: ", stack.pop())
+    print("stack: ", stack)
+    print("Stack is empty: ", stack.is_empty())
+```
+
+### The Output
+
+```text
+Stack is empty:  True
+stack:  0, 1, 13, 15, 7, 10
+peek:  0
+popped:  0
+popped:  1
+stack:  13, 15, 7, 10
+Stack is empty:  False
+```
+
+---
+
+## Summary: Which One Should You Use at Your Next Party?
+
+| Feature | Dynamic Array Stack | Linked List Stack |
+| :--- | :--- | :--- |
+| **Push / Pop Time** | $O(1)$ amortized | $O(1)$ strict |
+| **Memory Overhead** | Low (contiguous array blocks) | Higher (storing explicit `.next` pointers) |
+| **Vibe** | "I brought a bag and I'm packing things efficiently." | "My life is a trail of breadcrumbs and pointers." |
+
+Next time you find yourself trapped listening to someone explain their cryptocurrency portfolio, just remember: you are simply popping elements off a stack until you reach an empty state. Happy coding!
