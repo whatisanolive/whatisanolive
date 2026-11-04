@@ -35,20 +35,9 @@ def has_duplicates(arr):
     return False
 ```
 
-<table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
-  <thead>
-    <tr style="border-bottom: 1px solid #ccc; text-align: left;">
-      <th style="width: 70%; padding: 8px;">Time</th>
-      <th style="width: 30%; padding: 8px;">Space</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="padding: 8px;">O(n²)</td>
-      <td style="padding: 8px;">O(1)</td>
-    </tr>
-  </tbody>
-</table>
+| Time | Space |
+| :--- | :--- |
+| $O(n^2)$ | $O(1)$ |
 
 > **Watch out:** Running this on a large dataset will turn your CPU fan into a jet engine. Your interviewer might actually kick you out of the room for writing this, but hey... it works!
 
@@ -68,20 +57,9 @@ def has_duplicates_3(arr):
     return False
 ```
 
-<table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
-  <thead>
-    <tr style="border-bottom: 1px solid #ccc; text-align: left;">
-      <th style="width: 70%; padding: 8px;">Time</th>
-      <th style="width: 30%; padding: 8px;">Space</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="padding: 8px;">O(n)</td>
-      <td style="padding: 8px;">O(n)</td>
-    </tr>
-  </tbody>
-</table>
+| Time | Space |
+| :--- | :--- |
+| $O(n)$ | $O(n)$ |
 
 Set lookups take $O(1)$ time on average, meaning we can breeze through the whole array in a single linear pass. We trade a bit of memory ($O(n)$ space) to buy back all our processing time.
 
@@ -93,4 +71,4 @@ Set lookups take $O(1)$ time on average, meaning we can breeze through the whole
 
 ## In an interview
 
-"You can start with a brute force double loop to show you understand the logic, but immediately pivot to a hashset or a one-line set conversion to prove you actually value system performance." Expect the classic follow-up: *"Great, now what if you have to solve this in $O(1)$ auxiliary space without modifying the original array?"*
+"You can start with a brute force double loop to show you understand the logic, but immediately pivot to a hashset or a one-line set conversion to prove you actually value system performance." Expect the classic follow-up: *"Great, now what if you have to solve this in $O(1)$ auxiliary space without modifying the original array?"*.
