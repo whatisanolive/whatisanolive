@@ -1,0 +1,100 @@
+---
+title: "Valid Anagram: Rearranging the furniture of strings"
+description: "A quirky guide to solving the Valid Anagram problem, from sorting to hashmap frequency counts and Pythonic shortcuts."
+date: "2026-11-05"
+tags: ["strings", "hashmaps"]
+author: "whatisanolive"
+---
+
+If you've ever tried to unscramble words on a lazy Sunday morning, you already know:
+
+> **_Checking for an anagram is like figuring out if two words were built with the exact same Lego blocks—you can either sort both piles alphabetically, count every brick with frequency maps, or just let Python’s Counter do the heavy lifting while you sip coffee._**
+
+Finding valid anagrams is a classic interview staple. It tests whether two strings contain the exact same characters with the exact same frequencies, completely ignoring order. 
+
+## The problem
+
+Given two strings `s` and `t`, return `True` if `t` is an anagram of `s`, and `False` otherwise:
+
+```plaintext
+Input:  s = "anagram", t = "nagaram"
+Output: True
+```
+
+## Approach 1: Sort and Compare
+
+The most intuitive approach is to sort both strings. If their characters line up identically after sorting, you've got an anagram. It's clean, but it forces your CPU to do extra work.
+
+```python
+def validAnagram_0(s, t):
+    if len(s) != len(t):
+        return False
+
+    return sorted(s) == sorted(t)
+```
+
+| Time | Space |
+| ---- | ----- |
+| O(n log n) | O(1) (or O(n) depending on sorting implementation) |
+
+> **Watch out:** Sorting takes $O(n \log n)$ time, which is fine for short words, but a bit sluggish if you're comparing massive paragraphs.
+
+---
+
+## Approach 2: The Hashmap Approach
+
+Instead of sorting, we can count the frequency of each character using dictionaries. We build two frequency maps—one for each string—and verify that every character count matches perfectly.
+
+```python
+def validAnagram_2(s, t):
+    if len(s) != len(t):
+        return False
+    
+    dict1 = {}
+    dict2 = {}
+    
+    for i in range(len(s)):
+        dict1[s[i]] = dict1.get(s[i], 0) + 1
+        dict2[t[i]] = dict2.get(t[i], 0) + 1
+    
+    for char in dict1.keys():
+        if dict1[char] != dict2.get(char, 0):
+            return False
+    
+    return True
+```
+
+| Time | Space |
+| ---- | ----- |
+| O(n) | O(n) |
+
+By trading a bit of memory for speed, we drop our time complexity down to a clean linear pass through the strings.
+
+---
+
+## Approach 3: The Pythonic Counter Shortcut
+
+If you want to write the cleanest code possible, Python's `collections.Counter` handles frequency counting under the hood in C, making it blindingly fast.
+
+```python
+from collections import Counter
+
+def validAnagram_4(s, t):
+    return Counter(s) == Counter(t)
+```
+
+| Time | Space |
+| ---- | ----- |
+| O(n) | O(n) |
+
+> **Note:** Your interviewer might roll their eyes if you use `Counter` right away instead of showing the manual hashmap logic, but hey—it's heavily optimized and widely used in production!
+
+## Edge cases
+
+- **Different lengths:** Handled instantly by checking `len(s) != len(t)` at the very beginning.
+- **Empty strings:** Both return `True` since an empty string is an anagram of itself.
+- **Unicode characters:** Standard ASCII frequency arrays work great for English alphabets, but hashmap and Counter solutions naturally scale to full unicode character sets.
+
+## In an interview
+
+"Start with the sorting approach to show algorithmic thinking, but quickly transition to the hashmap approach or mention the frequency array optimization to prove you care about linear time complexity." Expect the follow-up: *"What if the input contains unicode characters and you can't use extra memory for hash tables?"*
